@@ -30,7 +30,7 @@ func LoadPlayers(db *sql.DB, acc *Account) ([]*login_proto_messages.Character, e
 
 	statement := fmt.Sprintf(
 		`SELECT name, level, sex, vocation, looktype, lookhead, lookbody, looklegs,
-			lookfeet, lookaddons, lastlogin from players where account_id = "%d"`,
+			lookfeet, lookaddons, lastlogin from players where account_id = "%d" AND deletion = 0`,
 		acc.ID,
 	)
 
