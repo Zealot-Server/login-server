@@ -1,0 +1,69 @@
+name: Production deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Commit SHA already validated by CI
+        required: true
+        type: string
+
+concurrency:
+  group: login-server-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy the validated login server
+        uses: appleboy/ssh-action@91f3272fc5907f4699dcf59761eb622a07342f5a
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          timeout: 30s
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+
+            APP_DIR=/opt/zealot/login-server
+            STACK_DIR=/opt/zealot/canary/docker
+            TARGET_SHA='${{ github.event_name == 'workflow_dispatch' && inputs.target_sha || github.event.workflow_run.head_sha }}'
+            PREVIOUS_SHA="$(sudo git -C "$APP_DIR" rev-parse HEAD)"
+
+            rollback() {
+              sudo git -C "$APP_DIR" reset --hard "$PREVIOUS_SHA"
+              sudo docker compose -f "$STACK_DIR/docker-compose.yml" -f "$STACK_DIR/docker-compose.production.yml" up -d --no-deps --force-recreate login-server
+            }
+
+            sudo git -C "$APP_DIR" fetch origin main
+            sudo git -C "$APP_DIR" reset --hard "$TARGET_SHA"
+
+            if ! sudo docker compose -f "$STACK_DIR/docker-compose.yml" -f "$STACK_DIR/docker-compose.production.yml" up -d --no-deps --force-recreate login-server; then
+              rollback
+              exit 1
+            fi
+
+            for attempt in {1..20}; do
+              status="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 3 http://127.0.0.1:8088/login || true)"
+              if [ "$status" != 000 ] && [ -n "$status" ]; then
+                echo "Deployed $TARGET_SHA"
+                exit 0
+              fi
+              sleep 2
+            done
+
+            rollback
+            exit 1
