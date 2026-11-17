@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/opentibiabr/login-server/src/api/models"
@@ -33,6 +34,13 @@ func (_api *Api) login(c *gin.Context) {
 	case "boostedcreature":
 		database.HandleBoostedCreature(c, _api.DB, &_api.BoostedCreatureID, &_api.BoostedBossID)
 	case "login":
+		if minimum := os.Getenv("MIN_CLIENT_APP_VERSION"); clientUpdateRequired(minimum, payload.AppVersion) {
+			c.JSON(http.StatusOK, models.LoginErrorPayload{
+				ErrorCode:    2,
+				ErrorMessage: fmt.Sprintf("Zealot Client %s or newer is required. Download it at https://www.zealot.website/?subtopic=downloadclient", minimum),
+			})
+			return
+		}
 		if _api.GrpcConnection == nil {
 			writePublicError(c, serviceerrors.LoginService(
 				serviceerrors.CodeLoginServiceUnavailable,

@@ -13,6 +13,7 @@ func TestRequestPayloadAcceptsLoginMetadata(t *testing.T) {
 		"email": "player@example.invalid",
 		"password": "secret",
 		"stayloggedin": true,
+		"appversion": "1.0.4",
 		"clientversion": "15.20.99c34c",
 		"clienttype": 2,
 		"assetversion": "assets-sha",
@@ -22,6 +23,7 @@ func TestRequestPayloadAcceptsLoginMetadata(t *testing.T) {
 	var payload RequestPayload
 	assert.Nil(t, json.Unmarshal(raw, &payload))
 	assert.Equal(t, "login", payload.Type)
+	assert.Equal(t, "1.0.4", payload.AppVersion)
 	assert.Equal(t, "15.20.99c34c", payload.ClientVersion)
 	assert.Equal(t, uint32(2), payload.ClientType)
 	assert.Equal(t, "assets-sha", payload.AssetVersion)

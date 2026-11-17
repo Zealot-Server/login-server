@@ -72,7 +72,16 @@ Campos importantes:
 | `SERVER_IP` | IP enviado ao client para conectar no mundo. |
 | `SERVER_PORT` | Porta do game server, normalmente `7172`. |
 | `SERVER_NAME` | Nome do mundo exibido/retornado no login. |
+| `MIN_CLIENT_APP_VERSION` | Versão mínima do aplicativo Zealot no formato `MAJOR.MINOR.PATCH`. Vazia por padrão: não bloqueia clientes. |
 | `RATE_LIMITER_RATE` e `RATE_LIMITER_BURST` | Controle de requisicoes por usuario/IP. |
+
+O OTClient envia `appversion` no JSON de login, separado de `clientversion`
+(protocolo do jogo). Somente após publicar todos os pacotes da nova versão,
+defina `MIN_CLIENT_APP_VERSION` no ambiente do login-server e recrie esse
+serviço. Clientes antigos, que não enviam `appversion`, recebem uma mensagem
+com o endereço da página de download. A regra afeta novos logins, não sessões
+já conectadas. Uma versão mínima inválida desativa o bloqueio para evitar
+impedir a entrada de todos os jogadores por erro de configuração.
 
 ## Como Iniciar
 
