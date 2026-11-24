@@ -50,13 +50,18 @@ func (acc *Account) Authenticate(db *sql.DB) error {
 	p := h.Sum(nil)
 	passwordHash := fmt.Sprintf("%x", p)
 
-	statement := "SELECT id, type, premdays, lastday FROM accounts WHERE (email = ? OR name = ?) AND password = ?"
+	statement := "SELECT id, type, premdays, lastday, email, email_verified FROM accounts WHERE (email = ? OR name = ?) AND password = ?"
+	var accountEmail string
+	var verified int
 
-	err := db.QueryRow(statement, acc.Email, acc.Email, passwordHash).Scan(&acc.ID, &acc.Type, &acc.PremDays, &acc.LastDay)
+	err := db.QueryRow(statement, acc.Email, acc.Email, passwordHash).Scan(&acc.ID, &acc.Type, &acc.PremDays, &acc.LastDay, &accountEmail, &verified)
 	if err != nil {
 		return err
 	}
 
+	if verified != 1 && !strings.EqualFold(strings.TrimSpace(accountEmail), "admin@zealot.website") {
+		return serviceerrors.New(3, "EMAIL_NOT_VERIFIED", "Please verify your email on www.zealot.website before logging in.", nil)
+	}
 	return nil
 }
 
